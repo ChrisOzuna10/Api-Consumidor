@@ -2,7 +2,7 @@ package domain
 
 import "apidos/src/report/domain/entities"
 
-type IReport interface {
-	Update(id int, title, content, status string) error
-	GetAll() ([]entities.Report, error)
+// Interfaz para el repositorio que maneja las notificaciones
+type INotification interface {
+	Send(music entities.Notification) error
 }

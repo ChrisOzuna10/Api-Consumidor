@@ -1,30 +1,34 @@
 package infraestructure
 
 import (
-	"apidos/src/core"
-	"apidos/src/report/application/usescases"
+	"apidos/src/report/application/repositories"
+	application "apidos/src/report/application/usescases"
 	"apidos/src/report/infrastructure/adapters"
+	"apidos/src/report/infrastructure/controllers"
 	"log"
 )
 
-type Dependencies struct {
-	ProcessReportUseCase *usescases.ProcessReport
+type DependenciesReport struct {
+	CreateMusicController *controllers.ProcessReportController
+	RabbitMQAdapter       *adapters.RabbitMQAdapter
 }
 
-func NewDependencies(db *MySQL) (*Dependencies, error) {
-	err := core.InitRabbitMQ()
+func InitReport() *DependenciesReport {
+	// Inicializamos RabbitMQ
+	rmqClient, err := adapters.NewRabbitMQAdapter()
+	// Pasa la URL de conexión si es necesario
 	if err != nil {
-		log.Fatal("Error al inicializar RabbitMQ", err)
+		log.Fatalf("Error creando RabbitMQ cliente: %v", err)
 	}
 
-	rabbitService := adapters.NewRabbitMQService()
-	rabbitPublishService := adapters.NewRabbitMQPublishService()
-	reportRepo := NewMySQL()
+	// Creamos el servicio de notificación
+	reportService := repositories.NewServiceNotification(rmqClient)
 
-	processReportUseCase := usescases.NewMysqlProcessReport(reportRepo, rabbitService, rabbitPublishService)
+	// Creamos el caso de uso de procesamiento de reportes
+	createMusic := application.NewProcessReport(rmqClient, reportService)
 
-	go processReportUseCase.StartProcessingReports()
-	return &Dependencies{
-		ProcessReportUseCase: processReportUseCase,
-	}, nil
+	return &DependenciesReport{
+		CreateMusicController: controllers.NewProcessReportController(createMusic, rmqClient),
+		RabbitMQAdapter:       rmqClient,
+	}
 }
